@@ -11,7 +11,7 @@ echo "==============================================="
 
 # 1. Bersihkan laporan lama
 echo "Bersiap..." > $LAPORAN
-echo "Waktu Audit: $(date)" >> $LAPORAN
+echo "Waktu scanning: $(date)" >> $LAPORAN
 echo "-----------------------------------------------" >> $LAPORAN
 
 # 2. STEP 1: Scan Infrastruktur (Hadolint)
