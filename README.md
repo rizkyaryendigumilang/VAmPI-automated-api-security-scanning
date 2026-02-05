@@ -1,99 +1,53 @@
-# VAmPI
-**The Vulnerable API** *(Based on OpenAPI 3)*
-![vampi](https://i.imgur.com/zR0quKf.jpg)
+# 🛡️ VAmPI: Secure API Pipeline (DevSecOps Implementation)
 
-[![Docker Image CI](https://github.com/erev0s/VAmPI/actions/workflows/docker-image.yml/badge.svg)](https://github.com/erev0s/VAmPI/actions/workflows/docker-image.yml) ![Docker Pulls](https://img.shields.io/docker/pulls/erev0s/vampi)
+![Security scanning](https://github.com/rizkyaryendigumilang/VAmPI-Final/actions/workflows/devsecops.yml/badge.svg)
+![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)
+![DevSecOps](https://img.shields.io/badge/Role-DevSecOps_&_Pentesting-blue)
 
+## 📌 Deskripsi Project
+Project ini mendemonstrasikan integrasi keamanan otomatis ke dalam siklus deployment aplikasi (CI/CD). Menggunakan aplikasi **VAmPI** (Vulnerable API) sebagai target, saya telah membangun sistem "Security Guard" otomatis yang melakukan scanning.
 
-VAmPI is a vulnerable API made with Flask and it includes vulnerabilities from the OWASP top 10 vulnerabilities for APIs. It was created as I wanted a vulnerable API to evaluate the efficiency of tools used to detect security issues in APIs. It includes a switch on/off to allow the API to be vulnerable or not while testing. This allows to cover better the cases for false positives/negatives. VAmPI can also be used for learning/teaching purposes. You can find a bit more details about the vulnerabilities in [erev0s.com](https://erev0s.com/blog/vampi-vulnerable-api-security-testing/).
+## 🚀 Fitur Keamanan (The Success Story)
 
+Sistem ini berhasil menggabungkan tiga pilar utama keamanan informasi:
 
-#### Features
- - Based on OWASP Top 10 vulnerabilities for APIs.
- - OpenAPI3 specs and Postman Collection included.
- - Global switch on/off to have a vulnerable environment or not.
- - Token-Based Authentication (Adjust lifetime from within app.py)
- - Available Swagger UI to directly interact with the API
+### 1. **Infrastructure as Code (IaC) Scanning**
+* **Tool:** Hadolint
+* **Fungsi:** Mendeteksi kesalahan konfigurasi pada `Dockerfile`.
+* **Keberhasilan:** Memastikan container berjalan dengan *Best Practices*, mencegah penggunaan *root user* yang berbahaya, dan menjaga ukuran image tetap efisien.
 
-VAmPI's flow of actions is going like this: an unregistered user can see minimal information about the dummy users included in the API. A user can register and then login to be allowed using the token received during login to post a book. For a book posted the data accepted are the title and a secret about that book. Each book is unique for every user and only the owner of the book should be allowed to view the secret.
+### 2. **Software Supply Chain Security (SCA)**
+* **Tool:** Trivy
+* **Fungsi:** Memindai library (dependencies) yang ada di `requirements.txt`.
+* **Keberhasilan:** Mendeteksi kerentanan kritis (CVE) pada library pihak ketiga secara otomatis sebelum aplikasi dideploy.
 
-A quick rundown of the actions included can be seen in the following table:
+### 3. **Dynamic Application Security Testing (DAST)**
+* **Tool:** **OWASP ZAP (Zaproxy)**
+* **Fungsi:** Melakukan pengujian penetrasi (Pentesting) secara dinamis terhadap aplikasi yang sedang berjalan (runtime).
+* **Keterangan:** Menggunakan **ZAP Baseline Scan** untuk memindai endpoint API secara otomatis. Tool ini mensimulasikan serangan nyata dari luar sistem untuk menemukan celah keamanan yang tidak terlihat pada code sumber (static), seperti kerentanan pada respon HTTP dan konfigurasi server.
+* **Keberhasilan:** Berhasil mendeteksi celah kritis seperti *Missing Security Headers*, *Storable and Cacheable Content*, serta *Site Isolation Issues (Spectre)* pada aplikasi runtime.
 
-| **Action** |            **Path**           |                     **Details**                    |
-|:----------:|:-----------------------------:|:--------------------------------------------------:|
-|     GET    |           /createdb           | Creates and populates the database with dummy data |
-|     GET    |               /               |                     VAmPI home                     |
-|     GET    |               /me             |           Displays the user that is logged in       |
-|     GET    |           /users/v1           |      Displays all users with basic information     |
-|     GET    |        /users/v1/_debug       |         Displays all details for all users         |
-|    POST    |       /users/v1/register      |                  Register new user                 |
-|    POST    |        /users/v1/login        |                   Login to VAmPI                   |
-|     GET    |      /users/v1/{username}     |              Displays user by username             |
-|   DELETE   |      /users/v1/{username}     |       Deletes user by username (Only Admins)       |
-|     PUT    |   /users/v1/{username}/email  |             Update a single users email            |
-|     PUT    | /users/v1/{username}/password |                Update users password               |
-|     GET    |           /books/v1           |                 Retrieves all books                |
-|    POST    |           /books/v1           |                    Add new book                    |
-|     GET    |        /books/v1/{book}       |      Retrieves book by title along with secret     |
+---
 
-For more details you can either run VAmPI and visit `http://127.0.0.1:5000/ui/` or use a service like the [swagger editor](https://editor.swagger.io) supplying the OpenAPI specification which can be found in the directory `openapi_specs`.
+## 🛠️ Alur Kerja DevSecOps (Automation)
 
+Setiap kali saya melakukan `git push`, robot **GitHub Actions** menjalankan tugas berikut secara otomatis:
 
-#### List of Vulnerabilities
- - SQLi Injection
- - Unauthorized Password Change
- - Broken Object Level Authorization
- - Mass Assignment
- - Excessive Data Exposure through debug endpoint
- - User and Password Enumeration
- - RegexDOS (Denial of Service)
- - Lack of Resources & Rate Limiting
- - JWT authentication bypass via weak signing key
+1. **Automated Scanning:** Menjalankan script `scan_otomatis.sh` yang merangkum seluruh temuan.
+2. **Container Testing:** Membangun dan menjalankan aplikasi di lingkungan virtual yang terisolasi.
+3. **Security Pentest:** **OWASP ZAP** menyerang aplikasi yang aktif untuk mencari celah keamanan nyata (Dynamic Analysis).
+4. **Instant Reporting:** Mengirimkan laporan detail (`.txt` & log) langsung ke email saya sebagai pemberitahuan hasil scanning.
 
+---
 
+## 📂 Struktur Laporan Otomatis
+Laporan yang dihasilkan oleh sistem ini meliputi:
+* `hasil_scan_lengkap.txt`: Rekaman seluruh proses scanning terminal dari script otomatisasi.
+* `hadolint-report.txt`: Detail kepatuhan keamanan Docker.(IaC)
+* `trivy-report.txt`: Daftar kerentanan pada library aplikasi (SCA).
+* `zap-log.txt`: Hasil pengujian penetrasi dinamis (DAST) dari OWASP ZAP.
 
- ## Run it
-It is a Flask application so in order to run it you can install all requirements and then run the `app.py`.
-To install all requirements simply run `pip3 install -r requirements.txt` and then `python3 app.py`.
+---
 
-Or if you prefer you can also run it through docker or docker compose.
-
- #### Run it through Docker
-
- - Available in [Dockerhub](https://hub.docker.com/r/erev0s/vampi)
-~~~~
-docker run -p 5000:5000 erev0s/vampi:latest
-~~~~
-
-[Note: if you run Docker on newer versions of the MacOS, use `-p 5001:5000` to avoid conflicting with the AirPlay Receiver service. Alternatively, you could disable the AirPlay Receiver service in your System Preferences -> Sharing settings.]
-
-  #### Run it through Docker Compose
-`docker-compose` contains two instances, one instance with the secure configuration on port 5001 and another with insecure on port 5002:
-~~~~
-docker-compose up -d
-~~~~
-
-## Available Swagger UI :rocket:
-Visit the path `/ui` where you are running the API and a Swagger UI will be available to help you get started!
-~~~~
-http://127.0.0.1:5000/ui/
-~~~~
-
-## Customizing token timeout and vulnerable environment or not
-If you would like to alter the timeout of the token created after login or if you want to change the environment **not** to be vulnerable then you can use a few ways depending how you run the application.
-
- - If you run it like normal with `python3 app.py` then all you have to do is edit the `alive` and `vuln` variables defined in the `app.py` itself. The `alive` variable is measured in seconds, so if you put `100`, then the token expires after 100 seconds. The `vuln` variable is like boolean, if you set it to `1` then the application is vulnerable, and if you set it to `0` the application is not vulnerable.
- - If you run it through Docker, then you must either pass environment variables to the `docker run` command or edit the `Dockerfile` and rebuild. 
-   - Docker run example: `docker run -d -e vulnerable=0 -e tokentimetolive=300 -p 5000:5000 erev0s/vampi:latest`
-     - One nice feature to running it this way is you can startup a 2nd container with `vulnerable=1` on a different port and flip easily between the two.
-
-   - In the Dockerfile you will find two environment variables being set, the `ENV vulnerable=1` and the `ENV tokentimetolive=60`. Feel free to change it before running the docker build command.
-
-
-## Frequently asked questions
- - **There is a database error upon reaching endpoints!**
-   - Make sure to issue a request towards the endpoint `/createdb` in order to populate the database.
-
- [Picture from freepik - www.freepik.com](https://www.freepik.com/vectors/party)
-
-# VAmPI-Final
+## 👨‍💻 Tujuan Project
+Project ini membuktikan bahwa keamanan bukan lagi penghambat kecepatan coding, melainkan bagian dari otomatisasi. Dengan sistem ini, kerentanan dapat ditemukan dan diperbaiki **lebih awal** (*Shift-Left Security*) sebelum mencapai tangan pengguna.
