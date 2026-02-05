@@ -11,11 +11,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # --- 1. JALANKAN SCRIPT SH (FULL REPORT) ---
+      # --- 1. JALANKAN SCRIPT SH (FULL TERMINAL LOG) ---
       - name: Run Scan Otomatis Script
         run: |
           chmod +x scan_otomatis.sh
-          # Menjalankan script kamu dan menyimpan seluruh output terminal ke satu file
+          # Menangkap seluruh output terminal script kamu ke satu file
           ./scan_otomatis.sh > hasil_scan_lengkap.txt 2>&1 || true
 
       # --- 2. HADOLINT (REPORT PER TOOL) ---
@@ -35,14 +35,65 @@ jobs:
           docker build -t vampi-app .
           docker run -d --name vampi-instance -p 5000:5000 vampi-app
           sleep 15
+          # Cek apakah aplikasi sudah up
+          curl -v http://localhost:5000/v1/_debug/health || true
 
-      # --- 5. RUN ZAP ---
+      # --- 5. RUN ZAP (Dinamis/Pentesting) ---
       - name: Run ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.13.0
         with:
           target: 'http://localhost:5000'
           fail_action: false
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Mencegah error 'Resource not accessible' dengan mematikan auto-issuename: DevSecOps-Full-Audit-All-Reports
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  security-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # --- 1. JALANKAN SCRIPT SH (FULL TERMINAL LOG) ---
+      - name: Run Scan Otomatis Script
+        run: |
+          chmod +x scan_otomatis.sh
+          # Menangkap seluruh output terminal script kamu ke satu file
+          ./scan_otomatis.sh > hasil_scan_lengkap.txt 2>&1 || true
+
+      # --- 2. HADOLINT (REPORT PER TOOL) ---
+      - name: Run Hadolint
+        run: |
+          docker run --rm -v $(pwd):/root:ro hadolint/hadolint < Dockerfile > hadolint-report.txt || true
+
+      # --- 3. TRIVY (REPORT PER TOOL) ---
+      - name: Run Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy fs --severity HIGH,CRITICAL . > trivy-report.txt || true
+
+      # --- 4. PREPARASI APLIKASI UNTUK ZAP ---
+      - name: Build and Run VAmPI
+        run: |
+          docker build -t vampi-app .
+          docker run -d --name vampi-instance -p 5000:5000 vampi-app
+          sleep 15
+          # Cek apakah aplikasi sudah up
+          curl -v http://localhost:5000/v1/_debug/health || true
+
+      # --- 5. RUN ZAP (Dinamis/Pentesting) ---
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.13.0
+        with:
+          target: 'http://localhost:5000'
+          fail_action: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Mencegah error 'Resource not accessible' dengan mematikan auto-issue
+          create_issue: false 
 
       # --- 6. KIRIM EMAIL DENGAN SEMUA LAMPIRAN ---
       - name: Send Email with All Attachments
@@ -53,18 +104,48 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "🛡️ [COMPLETE AUDIT] Reports for ${{ github.repository }}"
+          subject: "🛡️ [COMPLETE AUDIT] Security Report: ${{ github.repository }}"
           to: rizkyaryendigumilang@gmail.com
           from: DevSecOps Automation Bot
           body: |
             Halo Rizky,
 
-            Audit keamanan lengkap telah selesai. Berikut adalah lampiran laporan yang tersedia:
+            Pipeline DevSecOps telah selesai dijalankan dengan sukses. 
+            Berikut adalah lampiran hasil audit untuk project ini:
             
-            1. hasil_scan_lengkap.txt (Seluruh proses dari script .sh)
-            2. hadolint-report.txt (Khusus detail Dockerfile)
-            3. trivy-report.txt (Khusus detail Library/Dependencies)
+            1. hasil_scan_lengkap.txt (Log seluruh proses script .sh)
+            2. hadolint-report.txt (Hasil analisis Dockerfile)
+            3. trivy-report.txt (Hasil analisis library/dependencies)
 
-            Silakan cek lampiran di bawah untuk detail teknisnya.
-          # Menambahkan semua file ke lampiran (dipisahkan koma)
+            ZAP Scan (Pentesting) juga telah selesai. Detail temuan ZAP dapat dilihat langsung di GitHub Actions Summary.
+
+            Status Pipeline: ${{ job.status }}
+          attachments: hasil_scan_lengkap.txt,hadolint-report.txt,trivy-report.txt
+          create_issue: false 
+
+      # --- 6. KIRIM EMAIL DENGAN SEMUA LAMPIRAN ---
+      - name: Send Email with All Attachments
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🛡️ [COMPLETE AUDIT] Security Report: ${{ github.repository }}"
+          to: rizkyaryendigumilang@gmail.com
+          from: DevSecOps Automation Bot
+          body: |
+            Halo Rizky,
+
+            Pipeline DevSecOps telah selesai dijalankan dengan sukses. 
+            Berikut adalah lampiran hasil audit untuk project ini:
+            
+            1. hasil_scan_lengkap.txt (Log seluruh proses script .sh)
+            2. hadolint-report.txt (Hasil analisis Dockerfile)
+            3. trivy-report.txt (Hasil analisis library/dependencies)
+
+            ZAP Scan (Pentesting) juga telah selesai. Detail temuan ZAP dapat dilihat langsung di GitHub Actions Summary.
+
+            Status Pipeline: ${{ job.status }}
           attachments: hasil_scan_lengkap.txt,hadolint-report.txt,trivy-report.txt
