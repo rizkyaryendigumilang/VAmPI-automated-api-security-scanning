@@ -1,56 +1,43 @@
-name: DevSecOps-Audit-Email
-
-on:
-  push:
-    branches: [ "main", "master" ]
-
-jobs:
-  security-audit:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      # 1. SCAN DOCKERFILE
-      - name: Hadolint Scan
-        uses: hadolint/hadolint-action@v3.1.0
-        id: hadolint
+# --- 4. DYNAMIC ANALYSIS (OWASP ZAP) ---
+      - name: Run ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.13.0
         with:
-          dockerfile: Dockerfile
-          ignore: DL3018
-          fail-on: error
+          target: 'http://localhost:5000'
+          fail_action: false 
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. SCAN DEPENDENCIES
-      - name: Trivy Scan
-        uses: aquasecurity/trivy-action@master
-        id: trivy
-        with:
-          scan-type: 'fs'
-          severity: 'CRITICAL,HIGH'
-          format: 'table'
+      # --- 5. BACA HASIL SCAN KE VARIABLE ---
+      - name: Prepare Scan Results for Email
+        if: always()
+        run: |
+          # Ambil hasil ringkasan ZAP (jika ada file report yang terbuat)
+          # Untuk contoh ini, kita buat ringkasan teks sederhana
+          echo "HADOLINT_LOG=$(docker run --rm -v $(pwd):/root:ro hadolint/hadolint < Dockerfile | head -n 10)" >> $GITHUB_ENV
+          echo "TRIVY_LOG=$(trivy fs --severity HIGH,CRITICAL . | grep -A 10 "Total")" >> $GITHUB_ENV
 
-      # 3. KIRIM EMAIL (OTOMATIS SETELAH PUSH)
-      - name: Send Email Notification
-        if: always() # Tetap kirim meski scan ada yang gagal
+      # --- 6. KIRIM EMAIL DENGAN DETAIL SCAN ---
+      - name: Send Full Audit Report
+        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "[GitHub Actions] Security Audit Report - ${{ github.event.repository.name }}"
+          subject: "🛡️ [DETAILED REPORT] Audit Keamanan Selesai"
           to: rizkyaryendigumilang@gmail.com
-          from: GitHub DevSecOps Bot
+          from: DevSecOps Automation Bot
           body: |
-            Halo Rizky,
+            Halo Rizky, berikut adalah detail hasil scan otomatis:
 
-            Audit keamanan otomatis telah selesai dijalankan untuk commit: "${{ github.event.head_commit.message }}".
+            1. INFRASTRUCTURE SCAN (HADOLINT):
+            ${{ env.HADOLINT_LOG }}
 
-            Hasil Audit:
-            - Hadolint (Docker): Selesai
-            - Trivy (Dependency): Selesai
-            
-            Detail log lengkap bisa dilihat di sini:
+            2. DEPENDENCY SCAN (TRIVY):
+            ${{ env.TRIVY_LOG }}
+
+            3. DYNAMIC SCAN (OWASP ZAP):
+            Status: Selesai. Silakan cek detail kerentanan pada link di bawah.
+
+            DETAIL LOG LENGKAP:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Status Workflow: ${{ job.status }}
