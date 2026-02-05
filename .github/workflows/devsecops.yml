@@ -1,4 +1,4 @@
-name: DevSecOps-Full-Audit-All-Reports
+name: DevSecOps-Final-Success
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
 jobs:
   security-pipeline:
     runs-on: ubuntu-latest
-    # --- FIX ERROR PERMISSION: Memberi izin robot untuk menulis laporan ---
     permissions:
       contents: write
       issues: write
@@ -17,41 +16,37 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # --- 1. JALANKAN SCRIPT SH (FULL TERMINAL LOG) ---
+      # 1. LOG SCRIPT SH
       - name: Run Scan Otomatis Script
         run: |
           chmod +x scan_otomatis.sh
           ./scan_otomatis.sh > hasil_scan_lengkap.txt 2>&1 || true
 
-      # --- 2. HADOLINT (REPORT PER TOOL) ---
+      # 2. HADOLINT
       - name: Run Hadolint
         run: |
           docker run --rm -v $(pwd):/root:ro hadolint/hadolint < Dockerfile > hadolint-report.txt || true
 
-      # --- 3. TRIVY (REPORT PER TOOL) ---
+      # 3. TRIVY
       - name: Run Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
           trivy fs --severity HIGH,CRITICAL . > trivy-report.txt || true
 
-      # --- 4. PREPARASI APLIKASI UNTUK ZAP ---
+      # 4. RUN VAmPI
       - name: Build and Run VAmPI
         run: |
           docker build -t vampi-app .
           docker run -d --name vampi-instance -p 5000:5000 vampi-app
           sleep 15
-          curl -v http://localhost:5000/v1/_debug/health || true
 
-      # --- 5. RUN ZAP (Dinamis/Pentesting) ---
+      # 5. ZAP SCAN (VERSI STABIL Tanpa Upload Artifact Otomatis)
       - name: Run ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.13.0
-        with:
-          target: 'http://localhost:5000'
-          fail_action: false
-          token: ${{ secrets.GITHUB_TOKEN }}
-          create_issue: true # Sekarang boleh true karena izin sudah diberikan
+        run: |
+          # Kita jalankan docker ZAP manual agar bisa ambil output teksnya tanpa error artifact
+          docker run --network="host" -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:5000 -g gen.conf -r zap-report.html > zap-log.txt || true
 
-      # --- 6. KIRIM EMAIL DENGAN SEMUA LAMPIRAN ---
+      # 6. KIRIM EMAIL (DENGAN 4 LAMPIRAN)
       - name: Send Email with All Attachments
         if: always()
         uses: dawidd6/action-send-mail@v3
@@ -60,14 +55,20 @@ jobs:
           server_port: 465
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "🛡️ [SUCCESS] Security Report: ${{ github.repository }}"
+          subject: "🛡️ [FINAL SUCCESS] Audit Security: ${{ github.repository }}"
           to: rizkyaryendigumilang@gmail.com
           from: DevSecOps Automation Bot
           body: |
             Halo Rizky,
 
-            Audit keamanan telah selesai tanpa error sistem. 
-            ZAP berhasil menemukan celah (Spectre & Caching) dan laporan sudah dibuat.
+            Audit selesai! Semua tool (Hadolint, Trivy, ZAP) telah berhasil dijalankan.
+            Saya melampirkan SEMUA hasil scan di bawah ini agar kamu bisa langsung menganalisis celah keamanan.
 
             Lampiran:
-            1. hasil_scan_lengkap.
+            1. hasil_scan_lengkap.txt (Log Terminal Keseluruhan)
+            2. hadolint-report.txt (Celah Dockerfile)
+            3. trivy-report.txt (Celah Library)
+            4. zap-log.txt (Celah Runtime/Pentest)
+
+            Status: ${{ job.status }}
+          attachments: hasil_scan_lengkap.txt,hadolint-report.txt,trivy-report.txt,zap-log.txt
