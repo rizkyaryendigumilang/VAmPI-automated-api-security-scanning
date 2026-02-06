@@ -15,25 +15,27 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # --- 1. RUN MASTER SCAN SCRIPT (SAST, SCA, IaC) ---
+      # --- 1. RUN STATIC SCANS (IaC, SCA, SAST) ---
+      # Menjalankan script yang menghasilkan hadolint-report.txt, trivy-report.txt, dan semgrep-report.txt
       - name: Run Static Security Scans
         run: |
           chmod +x scan_otomatis.sh
           ./scan_otomatis.sh
 
       # --- 2. PREPARE APP & WAF FOR DAST ---
+      # Menggunakan 'docker compose' (tanpa tanda hubung) untuk menghindari error command not found
       - name: Build and Run VAmPI with WAF
         run: |
-          docker-compose up -d --build
-          sleep 30 # Menunggu container benar-benar siap
+          docker compose up -d --build
+          sleep 30 
 
-      # --- 3. SIMULATE ATTACK & EXTRACT WAF LOG ---
+      # --- 3. SIMULATE ATTACK & EXTRACT WAF REPORT ---
       - name: Simulate Attack and Extract WAF Report
         run: |
-          # Melakukan simulasi serangan SQLi sederhana untuk memicu log WAF
+          # Memicu WAF dengan payload SQLi
           curl -I "http://localhost/api/v1/users/vampi%27%20OR%201=1" || true
-          # Mengambil log dari container nginx-waf
-          docker logs nginx-waf 2>&1 | grep "WAF SECURITY ALERT" > waf-report.txt || echo "No WAF alerts found" > waf-report.txt
+          # Ambil log dari container nginx-waf ke file report
+          docker logs nginx-waf 2>&1 | grep "WAF SECURITY ALERT" > waf-report.txt || echo "No WAF alerts found in this session" > waf-report.txt
 
       # --- 4. DAST: OWASP ZAP (DYNAMIC PENTESTING) ---
       - name: Run OWASP ZAP Pentest
@@ -64,10 +66,8 @@ jobs:
             2. SCA Scan (Trivy) -> Dependency Check
             3. SAST Scan (Semgrep) -> Source Code Check
             4. DAST Scan (OWASP ZAP) -> Runtime Pentesting
-            5. WAF Logs -> Runtime Protection
+            5. WAF Logs -> Runtime Protection (Blocked Attacks)
 
-            Detail temuan dapat dilihat pada lampiran laporan di bawah ini.
-            
             Status: ${{ job.status }}
           attachments: |
             hadolint-report.txt
