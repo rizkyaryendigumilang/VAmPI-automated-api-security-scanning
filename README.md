@@ -1,64 +1,66 @@
-# 🛡️ VAmPI: Ultimate DevSecOps & Automated Pentesting
-**The Vulnerable API (Based on OpenAPI 3) with Multi-Layered Security Scanning**
-
-![Security Scanning](https://github.com/rizkyaryendigumilang/VAmPI-Final/actions/workflows/devsecops.yml/badge.svg)
-![Build Status](https://img.shields.io/badge/Build-Success-brightgreen)
-![DevSecOps](https://img.shields.io/badge/Security-Full_Automation-blue)
+Markdown
+# 🛡️ VAmPI: Ultimate DevSecOps & Hardened Nginx WAF
+### The Vulnerable API with Full-Spectrum Security Automation & Runtime Protection
 
 ## 📌 Project Overview
-**VAmPI** is a Flask-based vulnerable API containing the OWASP Top 10 API Security Risks. 
+VAmPI adalah Flask-based vulnerable API yang mengandung risiko OWASP Top 10 API Security. Proyek ini tidak hanya mendemonstrasikan celah keamanan, tetapi juga mengimplementasikan **Dual-Layer Security Strategy**:
 
-This project goes beyond just running a vulnerable app; it implements a **Full-Spectrum DevSecOps Pipeline**. Every code change triggers an automated "Security Guard" that performs a 360-degree audit—from infrastructure and libraries to source code and runtime behavior.
+1.  **Shift-Left Security:** Audit otomatis (SAST, SCA, IaC, DAST) terintegrasi.
+2.  **Runtime Protection:** Implementasi **Hardened Nginx Reverse Proxy** sebagai Web Application Firewall (WAF) untuk memblokir serangan secara real-time.
 
 ---
 
 ## 🚀 The Multi-Layer Security Stack
 
-This pipeline integrates four essential security pillars:
+### 🔹 Layer 1: Automated Security Pipeline (Shift-Left)
+Orkestrasi via `scan_otomatis.sh` menjalankan audit menyeluruh sebelum aplikasi dianggap aman:
+* **Hadolint (IaC):** Audit keamanan Dockerfile untuk memastikan best-practice containerization.
+* **Trivy (SCA):** Memindai dependensi pihak ketiga dari kerentanan kritis (CVE).
+* **Semgrep (SAST):** Analisis kode statis untuk mendeteksi SQLi, XSS, dan *hardcoded secrets*.
+* **OWASP ZAP (DAST):** Simulasi penetrasi pada API yang sedang berjalan.
 
-### 1. **Infrastructure as Code (IaC) Scanning**
-* **Tool:** **Hadolint**
-* **Function:** Scanning the `Dockerfile` for misconfigurations.
-* **Outcome:** Prevents insecure root access and ensures container best practices.
-
-### 2. **Software Composition Analysis (SCA)**
-* **Tool:** **Trivy**
-* **Function:** Scans third-party libraries (`requirements.txt`) for known CVEs.
-* **Outcome:** Detects vulnerable dependencies before they reach production.
-
-### 3. **Static Application Security Testing (SAST)**
-* **Tool:** **Semgrep**
-* **Function:** Analyzes the Python/Flask source code for logic flaws and insecure patterns.
-* **Outcome:** Identifies SQL Injection, hardcoded secrets, and weak JWT configurations at the code level.
-
-### 4. **Dynamic Application Security Testing (DAST)**
-* **Tool:** **OWASP ZAP (Zaproxy)**
-* **Function:** Performs automated penetration testing on the running API.
-* **Outcome:** Simulates real-world attacks to find runtime vulnerabilities like *Security Misconfigurations* and *Insufficient Site Isolation (Spectre)*.
+### 🔹 Layer 2: Hardened Nginx WAF (Defense-in-Depth)
+Menambahkan perisai aktif untuk memitigasi serangan yang mungkin lolos dari tahap pengujian:
+* **WAF Pattern Matching:** Memblokir payload berbahaya (SQLi/XSS) di level network (403 Forbidden).
+* **Security Headers:** Injeksi otomatis CSP, HSTS, X-Frame-Options, dan X-Content-Type-Options.
+* **Server Masking:** Menyembunyikan identitas asli Flask/Python untuk mempersulit fase *reconnaissance* penyerang.
 
 ---
 
-## 🛠️ Automated Workflow (CI/CD)
-The system is orchestrated via **GitHub Actions** with the following flow:
-1. **Static Phase:** Runs `scan_otomatis.sh` which executes **Hadolint, Trivy, and Semgrep**.
-2. **Build Phase:** Builds the Docker image and deploys the VAmPI container in an isolated environment.
-3. **Dynamic Phase:** **OWASP ZAP** performs an automated pentest against the live endpoint.
-4. **Instant Reporting:** A comprehensive Scanning report is sent directly to the developer's email.
+## 📂 Security Reports & Audit Trail
+Seluruh hasil pemindaian dan log monitoring dikumpulkan secara terpusat dalam folder `security_audit_logs/`:
+
+| File Laporan | Kategori | Deskripsi |
+| :--- | :--- | :--- |
+| `1_hadolint_audit.txt` | IaC | Temuan miskonfigurasi pada Dockerfile. |
+| `2_trivy_audit.txt` | SCA | Daftar CVE pada library Python/Alpine. |
+| `3_semgrep_audit.txt` | SAST | Analisis celah keamanan pada *source code*. |
+| `4_zap_audit.txt` | DAST | Status pengujian dinamis pada endpoint API. |
+| `5_waf_alert.txt` | **Incident** | **Log serangan real-time yang diblokir Nginx (Human-Readable).** |
 
 ---
 
-## 📂 Scanning Reports Structure
-Each pipeline run generates five detailed security reports:
-* `hasil_scan_lengkap.txt`: Full terminal scanning trail.
-* `hadolint-report.txt`: Infrastructure compliance details.
-* `trivy-report.txt`: Dependency vulnerability list (SCA).
-* `semgrep-report.txt`: Source code security findings (SAST).
-* `zap-log.txt`: Dynamic penetration testing results (DAST).
+## 🔄 Automated Workflow & Incident Response
+Sistem ini memastikan respons cepat terhadap ancaman:
+1.  **Detection:** Script mendeteksi celah dari infrastruktur hingga kode.
+2.  **Protection:** Nginx secara aktif memblokir upaya eksploitasi yang menggunakan karakter berbahaya (seperti `'`, `--`, atau `%27`).
+3.  **Instant Alerting:** Sistem menghasilkan file `alert_email_siap_kirim.txt` yang berisi ringkasan serangan (Waktu, IP, dan Path) untuk notifikasi cepat kepada tim Security.
 
 ---
 
-## 👨‍💻 Project Mission
-To prove that security is not a blocker, but an enabler. By shifting security to the left (**Shift-Left Security**), we can build applications that are resilient by design and secure by default.
+## 🔍 Proof of Concept (WAF Blocking)
 
----
-*Created for Learning/Teaching and Evaluating Security Automation Tools.*
+**Skenario Serangan SQL Injection:**
+```bash
+# Mencoba serangan melalui port 80 (Nginx WAF)
+curl -I "http://localhost/users/v1/_all?id=%27"
+Hasil: HTTP/1.1 403 Forbidden Laporan otomatis yang dihasilkan dalam alert_email_siap_kirim.txt:
+
+Plaintext
+=== WAF SECURITY ALERT ===
+Tanggal: Fri Feb 6 2026
+
+Detail Serangan Terakhir:
+🕒 Jam: [06/Feb/2026:13:00:01] | 🌐 IP: 172.18.0.1 | 🚨 Serangan: /users/v1/_all?id=%27
+👨‍💻 Project Mission
+Proyek ini membuktikan bahwa keamanan bukanlah penghambat, melainkan enabler. Dengan menggabungkan Automated Scanning dan Infrastructure Hardening, kita membangun ekosistem aplikasi yang tidak hanya aman saat dideploy, tetapi juga tangguh menghadapi serangan nyata di lingkungan produksi.

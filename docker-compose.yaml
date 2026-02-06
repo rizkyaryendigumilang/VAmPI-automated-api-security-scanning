@@ -1,17 +1,29 @@
 version: "3"
-services:
- vampi-secure:
-  build: ./
-  container_name: vampi-secure
-  ports:
-   - 5001:5000
-  environment:
-   - vulnerable=0
 
- vampi-vulnerable:
-  build: ./
-  container_name: vampi-vulnerable
-  ports:
-   - 5002:5000
-  environment:
-   - vulnerable=1
+services:
+  vampi-secure:
+    build: ./
+    container_name: vampi-secure
+    ports:
+      - 5001:5000
+    environment:
+      - vulnerable=0
+
+  vampi-vulnerable:
+    build: ./
+    container_name: vampi-vulnerable
+    ports:
+      - 5002:5000
+    environment:
+      - vulnerable=1
+
+  # nginx-waf
+  nginx-waf:
+    image: nginx:alpine
+    container_name: nginx-waf
+    ports:
+      - 80:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - vampi-vulnerable
