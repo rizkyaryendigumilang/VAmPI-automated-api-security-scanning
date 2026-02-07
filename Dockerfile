@@ -1,5 +1,5 @@
 # Gunakan versi spesifik agar stabil
-FROM python:3.9-alpine
+FROM python:3.14.3-alpine
 
 # Set folder kerja
 WORKDIR /app
